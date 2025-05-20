@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SEO Tags -->
+    <meta name="description"
+        content="Compare rostos em imagens e verifique a semelhança facial de forma rápida e fácil. Ferramenta online para comparação de rostos." />
+    <meta name="keywords"
+        content="comparar rostos, reconhecimento facial, semelhança de rostos, comparação de imagens, face match, verificação facial" />
+    <meta name="author" content="Marcos Pilgrim" />
+    <meta property="og:title" content="Comparador de Rostos" />
+    <meta property="og:description"
+        content="Envie duas imagens e descubra se os rostos são semelhantes. Ferramenta online de comparação facial." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://seusite.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Comparador de Rostos" />
+    <meta name="twitter:description"
+        content="Compare rostos em imagens e verifique a semelhança facial de forma rápida e fácil." />
+    <title>Comparador de Rostos</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😀</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+
+    </style>
+</head>
+
+<body class="bg-gray-900 min-h-screen flex flex-col items-center justify-center px-8 py-8">
+    <header class="mb-8 max-w-[30rem]">
+        <h1 class="text-3xl md:text-4xl font-bold text-purple-500 tracking-tight text-center">Comparador de Rostos</h1>
+        <p class="text-gray-300 mt-2 text-center">Envie duas imagens para verificar a semelhança entre os rostos</p>
+    </header>
+    <main class="w-full px-4 max-w-[30rem]">
+        <form id="form-comparar" class="flex flex-col gap-8">
+            <div class="flex flex-col gap-6 justify-center">
+                <div class="flex flex-col items-center w-full">
+                    <label for="imagem1" class="text-gray-200 mb-2">Imagem 1</label>
+                    <input type="file" id="imagem1" name="imagem1" accept="image/*" required
+                        class="w-full file:bg-purple-600 file:text-white file:rounded file:px-4 file:py-2 file:border-0 file:mr-4 bg-gray-800 text-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                </div>
+                <div class="flex flex-col items-center w-full">
+                    <label for="imagem2" class="text-gray-200 mb-2">Imagem 2</label>
+                    <input type="file" id="imagem2" name="imagem2" accept="image/*" required
+                        class="w-full file:bg-purple-600 file:text-white file:rounded file:px-4 file:py-2 file:border-0 file:mr-4 bg-gray-800 text-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                </div>
+            </div>
+            <button type="submit"
+                class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded transition-colors duration-200 uppercase tracking-wide">
+                Comparar Rostos
+            </button>
+        </form>
+        <section id="resultado" class="mt-8 text-center"></section>
+    </main>
+    <footer class="mt-8 text-gray-600 text-xs text-center">
+        &copy; 2024 Desenvolvido por Marcos Pilgrim
+    </footer>
+    <script>
+        document.getElementById('form-comparar').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const resultadoDiv = document.getElementById('resultado');
+            let start = Date.now();
+            let intervalId;
+            function atualizarTempo() {
+                const tempo = ((Date.now() - start) / 1000).toFixed(2);
+                resultadoDiv.innerHTML = `<span class="text-gray-300">Comparando... <span class='text-purple-300'>${tempo}s</span></span>`;
+            }
+            atualizarTempo();
+            intervalId = setInterval(atualizarTempo, 100);
+
+            function fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = error => reject(error);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            try {
+                const file1 = document.getElementById('imagem1').files[0];
+                const file2 = document.getElementById('imagem2').files[0];
+                if (!file1 || !file2) throw new Error('Selecione as duas imagens.');
+                const [base64_1, base64_2] = await Promise.all([
+                    fileToBase64(file1),
+                    fileToBase64(file2)
+                ]);
+                const payload = {
+                    imagem1: base64_1,
+                    imagem2: base64_2
+                };
+                const resp = await fetch('/comparar-rostos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                clearInterval(intervalId);
+                if (!resp.ok) {
+                    const erro = await resp.json();
+                    throw new Error(erro.detail || 'Erro desconhecido');
+                }
+                const data = await resp.json();
+                const tempoTotal = ((Date.now() - start) / 1000).toFixed(2);
+                resultadoDiv.innerHTML = `
+            <div class="mt-4">
+              <span class="text-lg font-bold ${data.resultado ? 'text-purple-400' : 'text-red-400'}">
+                ${data.resultado ? 'Rostos semelhantes!' : 'Rostos diferentes.'}
+              </span>
+              <div class="text-gray-400 mt-2">Distância: <span class="text-purple-300">${data.distancia !== null ? data.distancia.toFixed(4) : 'N/A'}</span></div>
+              <div class="text-gray-500 mt-1 text-xs">Tempo de requisição: <span class="text-purple-300">${tempoTotal}s</span></div>
+            </div>
+          `;
+            } catch (err) {
+                clearInterval(intervalId);
+                resultadoDiv.innerHTML = `<span class="text-red-400">Erro: ${err.message}</span>`;
+            }
+        });
+    </script>
+</body>
+
+</html>
